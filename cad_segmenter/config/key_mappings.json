@@ -1,0 +1,45 @@
+{
+  "mouse_bindings": {
+    "pan": {
+      "modifier": "shift",
+      "action": "mouse_drag"
+    },
+    "rotate": {
+      "modifier": "alt",
+      "action": "mouse_drag"
+    },
+    "scale": {
+      "action": "scroll_wheel"
+    },
+    "select": {
+      "button": "left_click"
+    },
+    "multi_select": {
+      "button": "left_click",
+      "modifier": "control"
+    }
+  },
+  "keyboard_shortcuts": {
+    "save": "s",
+    "classes": {
+      "0": "background",
+      "1": "rib",
+      "2": "column(pillar)",
+      "3": "clip(hook, undercut, snap)",
+      "4": "concave(hole)",
+      "5": "zifu(letter, character, word)",
+      "6": "plate",
+      "7": "other"
+    },
+    "class_colors": {
+      "0": "#DFE6ED",
+      "1": "#00FF00",
+      "2": "#FF00FF",
+      "3": "#FF9900",
+      "4": "#00FFFF",
+      "5": "#3366FF",
+      "6": "#FF5722",
+      "7": "#9C27B0"
+    }
+  }
+}
