@@ -42,7 +42,7 @@ Designed and implemented in Python under strict **Model-View-Controller (MVC)** 
 2.  **High-Fidelity Tessellation Mapper (`utils/tessellation.py`)**:
     Uses OpenCascade's triangulation generator to tessellate actual CAD faces and preserves face order. Triangles in the resulting PyVista `PolyData` mesh are assigned a `"face_id"` matching the node graph index. This avoids simple proxy shapes (like spheres) and renders the **actual 3D geometry** fully segmented in the viewer!
 3.  **Geometric GNN Classifier (`models/gnn_model.py`)**:
-    A PyG-based deep graph neural network (`CADFeatureSegmenter`) employing Graph Convolutional layers, dropout, and a 6-class classification head.
+    A PyG-based deep graph neural network (`CADFeatureSegmenter`) employing **GATv2 (Graph Attention Network v2)** layers with multi-head attention and edge-attribute awareness, dropout, and a 6-class classification head. Integrates boundary dihedral angles into attention weight computations to dramatically increase transition fidelity.
 4.  **Automatic Design-for-Manufacturability (DFM) Audits (`controllers/app_controller.py`)**:
     Combines neural classification labels with local geometry to execute physical rules:
     *   **Sink Mark Risk**: Raises warnings if a face classified as a `rib` exceeds 60% of the nominal base-plate wall thickness.

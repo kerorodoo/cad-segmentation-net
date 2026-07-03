@@ -110,8 +110,10 @@ class TrainController:
                 num_val_test = max(
                     3, num_train // 5
                 )  # E.g. If train=500, val=100, test=100. Total = 700
-                num_total = num_train + num_val_test*2
-                ConsoleView.log_header(f"Procedural Dataset Division ({num_total} Parts Total)")
+                num_total = num_train + num_val_test * 2
+                ConsoleView.log_header(
+                    f"Procedural Dataset Division ({num_total} Parts Total)"
+                )
 
                 ConsoleView.log_info(
                     f"Generating Parallel Training set ({num_train} parts) -> {self.train_dir}"
@@ -143,9 +145,7 @@ class TrainController:
                         f"Pre-trained weights file not found: {weights_path}. Training from scratch."
                     )
 
-            ConsoleView.log_info(
-                f"Training with parameters: lr={learning_rate}."
-                )
+            ConsoleView.log_info(f"Training with parameters: lr={learning_rate}.")
             optimizer = optim.Adam(
                 model.parameters(), lr=learning_rate, weight_decay=5e-4
             )
