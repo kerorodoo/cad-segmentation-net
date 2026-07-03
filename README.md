@@ -132,6 +132,16 @@ The application provides three clean mutual-exclusive CLI modes:
 
 ### 1. Bootstrap / Model Self-Training (Recommended)
 This mode procedurally generates high-quality synthetic CAD variations with perfect labels, divides them into Train (`data/train`), Validation (`data/val`), and Test (`data/synthetic`) directories, trains the GNN, evaluates it against the validation set to print a **Confusion Matrix Classification Report**, and serializes the final model weights.
+
+Each training execution dynamically initializes a dedicated, timestamped folder at the project root named `task_YYYYMMDD_HHMMSS/` containing:
+* **`weights/`**:
+  * `best_segmenter.pth`: Weights from the epoch with the lowest validation loss (also mirrors to `pretrained_segmenter.pth` and the default global `cad_segmenter/models/weights/pretrained_segmenter.pth` folder for seamless inference).
+  * `latest_segmenter.pth`: Weights at the final epoch of training.
+* **`charts/`**:
+  * `loss_curves.png`: Loss curves (train vs. val) for each epoch.
+  * `accuracy_curves.png`: Accuracy curves (train vs. val) for each epoch.
+* **`training.log`**: A complete text recording of every metric, message, progress bar, and evaluation table printed to the console during the training run.
+
 ```bash
 ./venv/bin/python3 main.py --bootstrap --num-variants 15 --epochs 25
 ```
@@ -139,6 +149,15 @@ This mode procedurally generates high-quality synthetic CAD variations with perf
 Alternatively, to train the model using an already prepared dataset residing in `data/train` and `data/val` (without generating new synthetic files), add the `--use-existing-dataset` flag:
 ```bash
 ./venv/bin/python3 main.py --bootstrap --use-existing-dataset --epochs 25
+```
+
+You can also customize the training process with standard optimization parameters:
+* **Custom Learning Rate:** Use `--lr <value>` or `--learning-rate <value>` (default: `0.01`).
+* **Initialize with Pre-trained Weights:** Use `--weights <path/to/weights.pth>` to load pre-trained weights for transfer learning or fine-tuning.
+
+```bash
+# Example: Fine-tune previous best weights with a smaller learning rate
+./venv/bin/python3 main.py --bootstrap --use-existing-dataset --weights task_20260630_144348/weights/best_segmenter.pth --lr 0.001 --epochs 15
 ```
 
 ### 2. Prediction, DFM Audit, and 3D Visual HUD
