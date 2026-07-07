@@ -2,7 +2,6 @@ import os
 import json
 import numpy as np
 import pyvista as pv
-from typing import Dict
 
 from cad_segmenter.utils.cad_interactor import CADInteractorStyle
 from cad_segmenter.views.console_view import ConsoleView
@@ -158,22 +157,43 @@ class AnnotatorViewer3D:
             self.plotter.remove_actor("selection_highlight")
 
     def _save_annotations(self) -> None:
-        """Writes current annotations to JSON file format in data/."""
+        """Writes current annotations to JSON file format with embedded geometric fingerprints."""
         basename = os.path.splitext(os.path.basename(self.step_path))[0]
         os.makedirs("data", exist_ok=True)
         out_path = os.path.join("data", f"{basename}_labels.json")
 
-        manifest: Dict[str, int] = {}
-        for idx, cls_id in enumerate(self.face_annotations):
-            manifest[str(idx)] = int(cls_id)
+        from cad_segmenter.utils.geometry_healer import GeometryHealer
 
-        with open(out_path, "w") as f:
-            json.dump(manifest, f, indent=2)
+        try:
+            # 1. Load native STEP shape
+            shape = GeometryHealer.load_step_shape(self.step_path)
+            # 2. Extract intrinsic fingerprints and total area
+            target_fps, total_area = GeometryHealer.extract_face_fingerprints(shape)
+            # 3. Assemble rich, robust label manifest
+            manifest = GeometryHealer.generate_rich_manifest(
+                target_fps, self.face_annotations, total_area
+            )
+
+            with open(out_path, "w") as f:
+                json.dump(manifest, f, indent=2)
+
+            num_serialized = len(manifest["labels"])
+        except Exception as e:
+            ConsoleView.log_warning(
+                f"Healer failed to serialize rich metadata: {e}. Falling back to index-only."
+            )
+            # Standard index-only fallback
+            manifest_fallback = {}
+            for idx, cls_id in enumerate(self.face_annotations):
+                manifest_fallback[str(idx)] = int(cls_id)
+            with open(out_path, "w") as f:
+                json.dump(manifest_fallback, f, indent=2)
+            num_serialized = len(manifest_fallback)
 
         save_notice = (
             f"SUCCESS:\n"
             f"-----------------\n"
-            f"Serialized {len(manifest)} faces successfully!\n"
+            f"Serialized {num_serialized} faces successfully!\n"
             f"Output written to:\n"
             f"{out_path}"
         )

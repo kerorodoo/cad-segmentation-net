@@ -42,7 +42,11 @@ Designed and implemented in Python under strict **Model-View-Controller (MVC)** 
 2.  **High-Fidelity Tessellation Mapper (`utils/tessellation.py`)**:
     Uses OpenCascade's triangulation generator to tessellate actual CAD faces and preserves face order. Triangles in the resulting PyVista `PolyData` mesh are assigned a `"face_id"` matching the node graph index. This avoids simple proxy shapes (like spheres) and renders the **actual 3D geometry** fully segmented in the viewer!
 3.  **Geometric GNN Classifier (`models/gnn_model.py`)**:
-    A PyG-based deep graph neural network (`CADFeatureSegmenter`) employing **GATv2 (Graph Attention Network v2)** layers with multi-head attention and edge-attribute awareness, dropout, and a 6-class classification head. Integrates boundary dihedral angles into attention weight computations to dramatically increase transition fidelity.
+    A PyG-based unified deep learning classifier (`CADFeatureSegmenter`) supporting four distinct routed GNN architectures:
+    *   **GCN:** Isotropic Graph Convolutional Network baseline.
+    *   **GATv2 (Default):** High-Performance Attention Network using dynamic dihedral edge-attribute gating (reigning accuracy leader).
+    *   **GINE:** Isotropic Graph Isomorphism Network using sum-aggregation and deep MLPs for structural topology identification.
+    *   **GraphGPS:** General, Powerful, and Scalable Graph Transformer combining GINE local message-passing with global Multi-Head Self-Attention.
 4.  **Automatic Design-for-Manufacturability (DFM) Audits (`controllers/app_controller.py`)**:
     Combines neural classification labels with local geometry to execute physical rules:
     *   **Sink Mark Risk**: Raises warnings if a face classified as a `rib` exceeds 60% of the nominal base-plate wall thickness.
@@ -51,6 +55,8 @@ Designed and implemented in Python under strict **Model-View-Controller (MVC)** 
     Renders the physical slope metrics (normals scale) in the left viewport and GNN classifications/DFM flags as 3D text cards with confidence percentages overlaid directly over face centroids. Supports linked, synchronized camera viewpoints.
 6.  **Interactive CLI progress & Evaluation Report (`utils/metrics.py`)**:
     Generates a pure-Python validation **Confusion Matrix** and **Classification Report** (Precision, Recall, F1, IoU per class, and Overall Accuracy) printed beautifully in the terminal at the end of training. Handles progress bars during epoch runs.
+7.  **Automatic Geometric Healing & Label Alignment (`utils/geometry_healer.py`)**:
+    An advanced parametric backend helper that ensures annotation label stability. Saves and checks enriched geometric fingerprints (surface type, normalized scale-invariant area ratio, wire loops, topological edge counts, centroids, and normals). If a CAD model is parameterized or modified, the backend automatically runs **Bipartite Graph Matching** using SciPy's Hungarian Algorithm (`linear_sum_assignment`) to realign your labels to the modified model, completely eliminating label scrambling!
 
 ---
 
@@ -151,21 +157,22 @@ Alternatively, to train the model using an already prepared dataset residing in 
 ./venv/bin/python3 main.py --bootstrap --use-existing-dataset --epochs 25
 ```
 
-You can also customize the training process with standard optimization parameters:
+You can also customize the training process with standard optimization and architectural parameters:
+* **Custom GNN Backbone:** Use `--backbone <gcn|gatv2|gine|graphgps>` (default: `gatv2`). Selects between GCN, GATv2, GINE, or GraphGPS architectures.
 * **Custom Learning Rate:** Use `--lr <value>` or `--learning-rate <value>` (default: `0.01`).
 * **Initialize with Pre-trained Weights:** Use `--weights <path/to/weights.pth>` to load pre-trained weights for transfer learning or fine-tuning.
 
 ```bash
-# Example: Fine-tune previous best weights with a smaller learning rate
-./venv/bin/python3 main.py --bootstrap --use-existing-dataset --weights task_20260630_144348/weights/best_segmenter.pth --lr 0.001 --epochs 15
+# Example: Fine-tune pre-trained GATv2 weights with a smaller learning rate
+./venv/bin/python3 main.py --bootstrap --use-existing-dataset --weights task_20260703_135110/weights/best_segmenter.pth --lr 0.001 --epochs 15 --backbone gatv2
 ```
 
 ### 2. Prediction, DFM Audit, and 3D Visual HUD
 Segments any custom, user-provided `.stp` file. Loads the pre-trained GNN weights, classifies every face, evaluates engineering manufacturing rules, and launches the interactable Dual-Pane PyVista viewport.
 ```bash
-./venv/bin/python3 main.py --predict data/synthetic/variant_1.stp
+./venv/bin/python3 main.py --predict data/synthetic/variant_1.stp --backbone gatv2
 ```
-*Note: To specify custom weights, append `--weights /path/to/model.pth`.*
+*Note: To specify custom weights, append `--weights /path/to/model.pth`. Use `--backbone` to specify which architecture the saved weights belong to (default: `gatv2`).*
 
 ### 3. Procedural Dataset Generation Only
 Generates synthetic CAD variants and matching JSON face-label manifests without running model training:

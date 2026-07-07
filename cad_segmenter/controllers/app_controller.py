@@ -1,5 +1,4 @@
 import os
-import json
 import torch
 import numpy as np
 from typing import List, Dict, Any, Tuple
@@ -16,7 +15,9 @@ from torch_geometric.data import Data
 class AppController:
     """Coordinates STEP parsing, GNN classification, DFM audits, and interactive rendering."""
 
-    def predict_and_visualize(self, step_path: str, weights_path: str = None) -> None:
+    def predict_and_visualize(
+        self, step_path: str, weights_path: str = None, backbone: str = "gatv2"
+    ) -> None:
         """Parses a STEP file, runs GNN semantic segmentation, performs DFM, and shows HUD."""
         ConsoleView.log_header("CAD Semantic Segmentation Pipeline")
 
@@ -43,7 +44,7 @@ class AppController:
         )
 
         # 2. Run GNN Inference
-        preds, probs = self._run_inference(graph, weights_path)
+        preds, probs = self._run_inference(graph, weights_path, backbone=backbone)
         ConsoleView.log_success("GNN semantic face segmentation complete.")
 
         # 3. Design-for-Manufacturability (DFM) Audit
@@ -72,17 +73,16 @@ class AppController:
         if label_file:
             ConsoleView.log_info(f"Found ground-truth labels at: {label_file}")
             try:
-                with open(label_file, "r") as f:
-                    label_data = json.load(f)
-                num_faces = graph.num_nodes
-                face_labels = np.zeros(num_faces, dtype=np.int32)
-                for f_idx_str, class_id in label_data.items():
-                    face_labels[int(f_idx_str)] = int(class_id)
+                from cad_segmenter.utils.geometry_healer import GeometryHealer
+
+                face_labels = GeometryHealer.heal_and_align_labels(
+                    step_path, label_file
+                )
                 ConsoleView.log_success(
-                    f"Successfully loaded {len(label_data)} face labels."
+                    f"Successfully loaded and healed {len(face_labels)} face labels."
                 )
             except Exception as e:
-                ConsoleView.log_warning(f"Failed to load labels: {e}")
+                ConsoleView.log_warning(f"Failed to load/heal labels: {e}")
 
         # 6. Launch interactive 3D HUD
         ConsoleView.log_success("Launching Interactive 3D HUD Dashboard...")
@@ -106,10 +106,10 @@ class AppController:
         viewer.show_annotator()
 
     def _run_inference(
-        self, graph: Data, weights_path: str
+        self, graph: Data, weights_path: str, backbone: str = "gatv2"
     ) -> Tuple[np.ndarray, np.ndarray]:
         """Loads GNN model weights and evaluates input graph to return (preds, probs)."""
-        segmenter = CADFeatureSegmenter(in_channels=6, num_classes=6)
+        segmenter = CADFeatureSegmenter(in_channels=6, num_classes=6, backbone=backbone)
         segmenter.load_state_dict(torch.load(weights_path))
         segmenter.eval()
 

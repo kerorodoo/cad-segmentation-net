@@ -22,13 +22,18 @@ def main() -> None:
                 num_variants=args.num_variants,
                 epochs=args.epochs,
                 use_existing_dataset=args.use_existing_dataset,
+                learning_rate=args.lr,
+                weights_path=args.weights,
+                backbone=args.backbone,
             )
             ConsoleView.log_success("Model self-bootstrapping complete!")
 
         elif args.predict:
             controller = AppController()
             controller.predict_and_visualize(
-                step_path=args.predict, weights_path=args.weights
+                step_path=args.predict,
+                weights_path=args.weights,
+                backbone=args.backbone,
             )
 
         elif args.annotate:
@@ -92,6 +97,20 @@ def _parse_args() -> argparse.Namespace:
         type=str,
         default=None,
         help="Path to custom model weights .pth (optional).",
+    )
+    parser.add_argument(
+        "--lr",
+        "--learning-rate",
+        type=float,
+        default=0.01,
+        help="Learning rate for GNN training (default: 0.01).",
+    )
+    parser.add_argument(
+        "--backbone",
+        type=str,
+        choices=["gcn", "gatv2", "gine", "graphgps"],
+        default="gatv2",
+        help="GNN backbone model architecture (default: gatv2).",
     )
     parser.add_argument(
         "--use-existing-dataset",

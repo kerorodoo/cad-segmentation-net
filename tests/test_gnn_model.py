@@ -7,7 +7,7 @@ from cad_segmenter.models.gnn_model import CADFeatureSegmenter
 
 
 def test_gnn_forward() -> None:
-    """Verifies that the GNN forward pass produces correct tensor output shape."""
+    """Verifies that the GNN forward pass produces correct tensor output shape across all backbones."""
     test_dir = "data/test_synthetic_gnn"
     if os.path.exists(test_dir):
         shutil.rmtree(test_dir)
@@ -18,15 +18,16 @@ def test_gnn_forward() -> None:
     model = CADGraphModel(step_path)
     graph = model.extract_graph_tensors()
 
-    segmenter = CADFeatureSegmenter(in_channels=6, num_classes=4)
-    segmenter.eval()
+    for backbone in ["gcn", "gatv2", "gine", "graphgps"]:
+        segmenter = CADFeatureSegmenter(in_channels=6, num_classes=4, backbone=backbone)
+        segmenter.eval()
 
-    with torch.no_grad():
-        out = segmenter(graph)
+        with torch.no_grad():
+            out = segmenter(graph)
 
-    assert out is not None
-    assert out.size(0) == graph.x.size(0)
-    assert out.size(1) == 4  # 4 classification logits
+        assert out is not None
+        assert out.size(0) == graph.x.size(0)
+        assert out.size(1) == 4  # 4 classification logits
 
     # Cleanup test output
     shutil.rmtree(test_dir)

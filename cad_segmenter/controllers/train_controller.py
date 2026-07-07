@@ -1,5 +1,4 @@
 import os
-import json
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -58,6 +57,7 @@ class TrainController:
         use_existing_dataset: bool = False,
         learning_rate: float = 0.01,
         weights_path: str = None,
+        backbone: str = "gatv2",
     ) -> str:
         """Procedurally bootstraps Train/Val/Test split datasets or loads existing, fits GNN, and runs evaluation."""
         project_root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
@@ -131,7 +131,8 @@ class TrainController:
                 _ = self._generate_split_dataset(self.test_dir, num_val_test)
 
             ConsoleView.log_header("GNN Training & Validation Loop (6 Classes)")
-            model = CADFeatureSegmenter(in_channels=6, num_classes=6)
+            ConsoleView.log_info(f"Selected GNN Neural Backbone: {backbone.upper()}")
+            model = CADFeatureSegmenter(in_channels=6, num_classes=6, backbone=backbone)
 
             # Load pre-trained weights if provided
             if weights_path is not None:
@@ -260,19 +261,12 @@ class TrainController:
         model = CADGraphModel(step_path)
         graph = model.extract_graph_tensors()
 
-        with open(labels_path, "r") as f:
-            labels_map = json.load(f)
+        # Load and align labels using GeometryHealer to maintain structural stability
+        from cad_segmenter.utils.geometry_healer import GeometryHealer
 
-        num_nodes = graph.x.size(0)
-        y = torch.zeros(num_nodes, dtype=torch.long)
+        healed_labels = GeometryHealer.heal_and_align_labels(step_path, labels_path)
 
-        # Align JSON index labels with face node indices
-        for f_idx_str, label in labels_map.items():
-            idx = int(f_idx_str)
-            if idx < num_nodes:
-                y[idx] = label
-
-        graph.y = y
+        graph.y = torch.tensor(healed_labels, dtype=torch.long)
         return graph
 
     def _load_graphs_from_directory(self, directory: str) -> List[Data]:
